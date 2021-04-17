@@ -1,0 +1,44 @@
+--Keep only records of four U.S. Airlines (American Airlines, Southwest Airlines, Delta Airlines, United Airlines):
+
+db.US_Flight_Raw_Data.remove({"OP_CARRIER": {$nin: ["AA","DL","UA","WN"]}})
+
+--Create a composite column to get unique Flight_ID:
+db.US_Flight_Raw_Data.aggregate([
+   {$addFields: { Flight_ID:
+        { $concat: [ "$FL_DATE", "-", "$OP_CARRIER", "-", "$TAIL_NUM", "-", "$OP_CARRIER_FL_NUM", "-", "$ORIGIN", "-", "$DEST"]}}},
+        {$out: "US_Flight_Raw_data"}
+        ]);
+
+--Create Route ID as a composite attribute:
+
+db.US_Flight_Raw_Data.aggregate([
+   {$addFields: {Route_ID:
+        {$concat: [ "$ORIGIN_AIRPORT_ID", “-”, "$DEST_AIRPORT_ID"]}}},
+        {$out: "US_Flight_Raw_Data"}
+
+--Create a table to highlight delay records:
+
+db.US_Flight_Raw_Data.aggregate([
+   {"$project": 
+                {"_id": 0, 
+                "Flight_ID": 1,
+                "CARRIER_DELAY": 1,
+                "WEATHER_DELAY": 1,
+                "NAS_DELAY": 1,
+                "SECURITY_DELAY": 1,
+                "LATE_AIRCRAFT_DELAY": 1,}},
+    {$out: "Delay_Record"}
+        ]);
+
+--Remove Records with No Delay Indication:
+db.Delay_Record.remove({"CARRIER_DELAY": "", "WEATHER_DELAY": "", "NAS_DELAY": "", "SECURITY_DELAY": "", "LATE_AIRCRAFT_DELAY": ""})
+
+--Remove unnecessary field:
+db.US_Flight_Raw_Data.updateMany(
+    {},
+    {$unset: {OP_UNIQUE_CARRIER: "", OP_CARRIER_AIRLINE_ID: "", CANCELLED: "",
+              CARRIER_DELAY: "", WEATHER_DELAY: "", NAS_DELAY: "",        
+              TAIL_NUM: "", SECURITY_DELAY: "", LATE_AIRCRAFT_DELAY: "",
+              ORIGIN: "", ORIGIN_AIRPORT_ID: "", ORIGIN_CITY_NAME: "", ORIGIN_STATE_ABR: "", ORIGIN_WAC: "",
+              DEST: "", DEST_AIRPORT_ID: "", DEST_CITY_NAME: "", DEST_STATE_ABR: "", DEST_WAC: ""
+
